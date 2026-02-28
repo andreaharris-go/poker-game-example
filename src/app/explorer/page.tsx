@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { HeaderProfile } from "@/lib/api/client";
 import type { EndpointInfo } from "@/lib/openapi/parser";
 import { getEndpointsByTag } from "@/lib/openapi/parser";
@@ -16,22 +16,26 @@ const BASE_URL_KEY = "poker-api-base-url";
 const DEFAULT_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
 
-export default function ExplorerPage() {
-  const [profile, setProfile] = useState<HeaderProfile>(getDefaultProfile);
-  const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
-  const [endpointsByTag, setEndpointsByTag] = useState<
-    Record<string, EndpointInfo[]>
-  >({});
-  const [collapsedTags, setCollapsedTags] = useState<Set<string>>(new Set());
+function loadProfile(): HeaderProfile {
+  if (typeof window === "undefined") return getDefaultProfile();
+  const profiles = getProfiles();
+  const activeId = getActiveProfileId();
+  const found = profiles.find((p) => p.id === activeId);
+  return found ?? profiles[0] ?? getDefaultProfile();
+}
 
-  useEffect(() => {
-    const profiles = getProfiles();
-    const activeId = getActiveProfileId();
-    const found = profiles.find((p) => p.id === activeId);
-    setProfile(found ?? profiles[0] ?? getDefaultProfile());
-    setBaseUrl(localStorage.getItem(BASE_URL_KEY) ?? DEFAULT_BASE_URL);
-    setEndpointsByTag(getEndpointsByTag());
-  }, []);
+function loadBaseUrl(): string {
+  if (typeof window === "undefined") return DEFAULT_BASE_URL;
+  return localStorage.getItem(BASE_URL_KEY) ?? DEFAULT_BASE_URL;
+}
+
+export default function ExplorerPage() {
+  const [profile] = useState<HeaderProfile>(loadProfile);
+  const [baseUrl] = useState(loadBaseUrl);
+  const [endpointsByTag] = useState<Record<string, EndpointInfo[]>>(
+    getEndpointsByTag,
+  );
+  const [collapsedTags, setCollapsedTags] = useState<Set<string>>(new Set());
 
   const toggleTag = (tag: string) => {
     setCollapsedTags((prev) => {

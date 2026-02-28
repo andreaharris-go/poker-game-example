@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import type { NetworkLogEntry } from "@/lib/api/client";
 import { getNetworkLog, onNetworkLogChange } from "@/lib/api/client";
 
@@ -20,18 +20,15 @@ function statusColor(status: number): string {
 }
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState<NetworkLogEntry[]>([]);
+  const [logs, setLogs] = useState<NetworkLogEntry[]>(getNetworkLog);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const refresh = useCallback(() => {
-    setLogs(getNetworkLog());
-  }, []);
-
   useEffect(() => {
-    refresh();
-    const unsub = onNetworkLogChange(refresh);
+    const unsub = onNetworkLogChange(() => {
+      setLogs(getNetworkLog());
+    });
     return unsub;
-  }, [refresh]);
+  }, []);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
