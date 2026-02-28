@@ -1,0 +1,803 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Multi-Tenant MTT Tournament Poker REST API",
+    "version": "1.0.0",
+    "description": "REST API for multi-tenant MTT (Multi-Table Tournament) poker games."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Default server"
+    }
+  ],
+  "tags": [
+    { "name": "Health", "description": "Health check" },
+    { "name": "Wallet", "description": "Player wallet operations" },
+    { "name": "Tournaments", "description": "Tournament player operations" },
+    { "name": "Tournaments (Admin)", "description": "Tournament admin operations" },
+    { "name": "Tables", "description": "Table player operations" },
+    { "name": "Tables (Admin)", "description": "Table admin operations" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "healthCheck",
+        "summary": "Health check",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  },
+                  "required": ["status"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallet/balance": {
+      "get": {
+        "tags": ["Wallet"],
+        "operationId": "getWalletBalance",
+        "summary": "Get player wallet balance",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet balance",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletBalance" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallet/transactions": {
+      "get": {
+        "tags": ["Wallet"],
+        "operationId": "getWalletTransactions",
+        "summary": "Get wallet transactions",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Pagination cursor"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 },
+            "description": "Number of results to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of wallet transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transactions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletTransaction" }
+                    },
+                    "nextCursor": { "type": "string", "nullable": true }
+                  },
+                  "required": ["transactions"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tournaments": {
+      "get": {
+        "tags": ["Tournaments"],
+        "operationId": "listTournaments",
+        "summary": "List tournaments",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["upcoming", "registering", "running", "completed"]
+            },
+            "description": "Filter by tournament status"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Pagination cursor"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "description": "Number of results to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tournaments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Tournament" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tournaments/{tournamentId}": {
+      "get": {
+        "tags": ["Tournaments"],
+        "operationId": "getTournament",
+        "summary": "Get tournament detail",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          { "$ref": "#/components/parameters/TournamentId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tournament detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tournament" }
+              }
+            }
+          },
+          "404": { "description": "Tournament not found" }
+        }
+      }
+    },
+    "/tournaments/{tournamentId}/register": {
+      "post": {
+        "tags": ["Tournaments"],
+        "operationId": "registerForTournament",
+        "summary": "Register for tournament",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          { "$ref": "#/components/parameters/TournamentId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Tournament not found" },
+          "409": { "description": "Already registered" }
+        }
+      }
+    },
+    "/tournaments/{tournamentId}/my-status": {
+      "get": {
+        "tags": ["Tournaments"],
+        "operationId": "getMyTournamentStatus",
+        "summary": "Get my tournament status",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          { "$ref": "#/components/parameters/TournamentId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player tournament status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tournamentId": { "type": "string" },
+                    "userId": { "type": "string" },
+                    "status": { "type": "string" },
+                    "tableId": { "type": "string", "nullable": true },
+                    "stack": { "type": "number", "nullable": true },
+                    "position": { "type": "number", "nullable": true }
+                  },
+                  "required": ["tournamentId", "userId", "status"]
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/admin/tournaments": {
+      "post": {
+        "tags": ["Tournaments (Admin)"],
+        "operationId": "createTournament",
+        "summary": "Create tournament",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTournamentDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tournament created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tournament" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" }
+        }
+      }
+    },
+    "/admin/tournaments/{tournamentId}/open-registration": {
+      "post": {
+        "tags": ["Tournaments (Admin)"],
+        "operationId": "openRegistration",
+        "summary": "Open registration",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/TournamentId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registration opened",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tournament" }
+              }
+            }
+          },
+          "404": { "description": "Tournament not found" }
+        }
+      }
+    },
+    "/admin/tournaments/{tournamentId}/close-registration": {
+      "post": {
+        "tags": ["Tournaments (Admin)"],
+        "operationId": "closeRegistration",
+        "summary": "Close registration",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/TournamentId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registration closed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tournament" }
+              }
+            }
+          },
+          "404": { "description": "Tournament not found" }
+        }
+      }
+    },
+    "/admin/tournaments/{tournamentId}/start": {
+      "post": {
+        "tags": ["Tournaments (Admin)"],
+        "operationId": "startTournament",
+        "summary": "Start tournament",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/TournamentId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tournament started",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tournament" }
+              }
+            }
+          },
+          "404": { "description": "Tournament not found" }
+        }
+      }
+    },
+    "/admin/tournaments/{tournamentId}/finish": {
+      "post": {
+        "tags": ["Tournaments (Admin)"],
+        "operationId": "finishTournament",
+        "summary": "Finish tournament",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/TournamentId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tournament finished",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Tournament" }
+              }
+            }
+          },
+          "404": { "description": "Tournament not found" }
+        }
+      }
+    },
+    "/admin/wallet/adjust": {
+      "post": {
+        "tags": ["Tournaments (Admin)"],
+        "operationId": "adjustWallet",
+        "summary": "Adjust wallet",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdjustWalletDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Wallet adjusted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletBalance" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" }
+        }
+      }
+    },
+    "/tables/{tableId}": {
+      "get": {
+        "tags": ["Tables"],
+        "operationId": "getTableState",
+        "summary": "Get table state",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          { "$ref": "#/components/parameters/TableId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Table state",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TableState" }
+              }
+            }
+          },
+          "404": { "description": "Table not found" }
+        }
+      }
+    },
+    "/tables/{tableId}/my-hand": {
+      "get": {
+        "tags": ["Tables"],
+        "operationId": "getMyHand",
+        "summary": "Get my hand at table",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          { "$ref": "#/components/parameters/TableId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player hand",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PlayerHand" }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/tables/{tableId}/action": {
+      "post": {
+        "tags": ["Tables"],
+        "operationId": "performTableAction",
+        "summary": "Perform table action",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/UserId" },
+          { "$ref": "#/components/parameters/TableId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TableActionDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Action performed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TableState" }
+              }
+            }
+          },
+          "400": { "description": "Invalid action" },
+          "404": { "description": "Table not found" }
+        }
+      }
+    },
+    "/admin/tables/{tableId}/advance": {
+      "post": {
+        "tags": ["Tables (Admin)"],
+        "operationId": "adminAdvanceTable",
+        "summary": "Admin advance table",
+        "parameters": [
+          { "$ref": "#/components/parameters/VendorId" },
+          { "$ref": "#/components/parameters/ProviderId" },
+          { "$ref": "#/components/parameters/AdminKey" },
+          { "$ref": "#/components/parameters/TableId" },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Table advanced",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TableState" }
+              }
+            }
+          },
+          "404": { "description": "Table not found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "VendorId": {
+        "name": "x-vendor-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Vendor identifier"
+      },
+      "ProviderId": {
+        "name": "x-provider-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Provider identifier"
+      },
+      "UserId": {
+        "name": "x-user-id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Player user identifier"
+      },
+      "AdminKey": {
+        "name": "x-admin-key",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Admin authentication key"
+      },
+      "IdempotencyKey": {
+        "name": "x-idempotency-key",
+        "in": "header",
+        "required": false,
+        "schema": { "type": "string" },
+        "description": "Idempotency key for POST requests"
+      },
+      "TournamentId": {
+        "name": "tournamentId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Tournament identifier"
+      },
+      "TableId": {
+        "name": "tableId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Table identifier"
+      }
+    },
+    "schemas": {
+      "AdjustWalletDto": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "amount": { "type": "number" },
+          "reason": { "type": "string" }
+        },
+        "required": ["userId", "amount", "reason"]
+      },
+      "CreateTournamentDto": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "startingStack": { "type": "number" },
+          "maxPlayers": { "type": "number" },
+          "minPlayers": { "type": "number" },
+          "seatMax": { "type": "number" },
+          "buyIn": { "type": "number" },
+          "blindStructure": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": { "type": "number" },
+                "smallBlind": { "type": "number" },
+                "bigBlind": { "type": "number" },
+                "durationSeconds": { "type": "number" }
+              },
+              "required": ["level", "smallBlind", "bigBlind", "durationSeconds"]
+            }
+          },
+          "registrationOpensAt": { "type": "string", "format": "date-time" },
+          "registrationClosesAt": { "type": "string", "format": "date-time" },
+          "lateRegMinutes": { "type": "number" },
+          "payoutStructure": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "place": { "type": "number" },
+                "percentage": { "type": "number" }
+              },
+              "required": ["place", "percentage"]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "startingStack",
+          "maxPlayers",
+          "minPlayers",
+          "seatMax",
+          "buyIn",
+          "blindStructure",
+          "registrationOpensAt",
+          "registrationClosesAt",
+          "lateRegMinutes",
+          "payoutStructure"
+        ]
+      },
+      "TableActionDto": {
+        "type": "object",
+        "properties": {
+          "actionType": {
+            "type": "string",
+            "enum": ["fold", "check", "call", "bet", "raise", "all-in"]
+          },
+          "amount": { "type": "number", "minimum": 0 }
+        },
+        "required": ["actionType"]
+      },
+      "Tournament": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "type": "string" },
+          "startingStack": { "type": "number" },
+          "maxPlayers": { "type": "number" },
+          "minPlayers": { "type": "number" },
+          "currentPlayers": { "type": "number" },
+          "seatMax": { "type": "number" },
+          "buyIn": { "type": "number" },
+          "blindStructure": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": { "type": "number" },
+                "smallBlind": { "type": "number" },
+                "bigBlind": { "type": "number" },
+                "durationSeconds": { "type": "number" }
+              },
+              "required": ["level", "smallBlind", "bigBlind", "durationSeconds"]
+            }
+          },
+          "registrationOpensAt": { "type": "string", "format": "date-time" },
+          "registrationClosesAt": { "type": "string", "format": "date-time" },
+          "lateRegMinutes": { "type": "number" },
+          "payoutStructure": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "place": { "type": "number" },
+                "percentage": { "type": "number" }
+              },
+              "required": ["place", "percentage"]
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "startingStack",
+          "maxPlayers",
+          "minPlayers",
+          "currentPlayers",
+          "seatMax",
+          "buyIn",
+          "blindStructure",
+          "registrationOpensAt",
+          "registrationClosesAt",
+          "lateRegMinutes",
+          "payoutStructure",
+          "createdAt"
+        ]
+      },
+      "TableState": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tournamentId": { "type": "string" },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position": { "type": "number" },
+                "playerId": { "type": "string" },
+                "stack": { "type": "number" },
+                "status": { "type": "string" }
+              },
+              "required": ["position", "playerId", "stack", "status"]
+            }
+          },
+          "communityCards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": { "type": "string" },
+                "suit": { "type": "string" }
+              },
+              "required": ["rank", "suit"]
+            }
+          },
+          "pot": { "type": "number" },
+          "currentBet": { "type": "number" },
+          "currentPlayer": { "type": "string", "nullable": true },
+          "round": { "type": "string" },
+          "dealerPosition": { "type": "number" }
+        },
+        "required": [
+          "id",
+          "tournamentId",
+          "seats",
+          "communityCards",
+          "pot",
+          "currentBet",
+          "round",
+          "dealerPosition"
+        ]
+      },
+      "PlayerHand": {
+        "type": "object",
+        "properties": {
+          "tableId": { "type": "string" },
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": { "type": "string" },
+                "suit": { "type": "string" }
+              },
+              "required": ["rank", "suit"]
+            }
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["tableId", "cards", "allowedActions"]
+      },
+      "WalletBalance": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "balance": { "type": "number" },
+          "currency": { "type": "string" }
+        },
+        "required": ["userId", "balance", "currency"]
+      },
+      "WalletTransaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "amount": { "type": "number" },
+          "reason": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "balanceAfter": { "type": "number" }
+        },
+        "required": ["id", "type", "amount", "reason", "createdAt", "balanceAfter"]
+      }
+    }
+  }
+}
