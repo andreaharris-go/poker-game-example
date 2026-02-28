@@ -25,6 +25,10 @@ export default function IdempotencyHelper({
       const next = !prev;
       if (next && lastKey) {
         onChange(lastKey);
+      } else if (next && !lastKey) {
+        const newKey = crypto.randomUUID();
+        setLastKey(newKey);
+        onChange(newKey);
       }
       return next;
     });

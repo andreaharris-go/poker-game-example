@@ -14,12 +14,21 @@ function statusColor(status: number): string {
   return "text-red-400";
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function syntaxHighlight(json: string): string {
-  return json.replace(
-    /("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+  const escaped = escapeHtml(json);
+  return escaped.replace(
+    /(&quot;(\\u[\da-fA-F]{4}|\\[^u]|[^\\&])*&quot;(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
     (match) => {
       let cls = "text-purple-400"; // number
-      if (match.startsWith('"')) {
+      if (match.startsWith("&quot;")) {
         cls = match.endsWith(":") ? "text-blue-300" : "text-green-300";
       } else if (/true|false/.test(match)) {
         cls = "text-yellow-300";
