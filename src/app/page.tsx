@@ -48,7 +48,7 @@ export default function Home() {
           <Link
             key={s.href}
             href={s.href}
-            className="rounded-lg border border-gray-700 bg-gray-800 p-4 shadow hover:border-blue-500 hover:bg-gray-750 transition-colors"
+            className="rounded-lg border border-gray-700 bg-gray-800 p-4 shadow hover:border-blue-500 hover:bg-gray-700 transition-colors"
           >
             <h2 className="mb-1 text-lg font-semibold text-white">{s.title}</h2>
             <p className="text-sm text-gray-400">{s.description}</p>
